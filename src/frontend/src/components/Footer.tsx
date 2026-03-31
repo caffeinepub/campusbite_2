@@ -64,7 +64,7 @@ export default function Footer() {
             <h3 className="font-semibold text-white mb-3">Quick Links</h3>
             <ul className="space-y-2">
               {[
-                { label: "Home", to: "/" },
+                { label: "Home", to: "/home" },
                 { label: "Menu", to: "/menu" },
                 { label: "Place Order", to: "/order" },
                 { label: "Track Order", to: "/tracking" },

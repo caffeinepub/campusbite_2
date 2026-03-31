@@ -23,7 +23,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link
-            to="/"
+            to="/home"
             className="flex items-center gap-2 shrink-0"
             data-ocid="nav.link"
           >
