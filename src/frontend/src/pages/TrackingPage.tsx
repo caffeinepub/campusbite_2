@@ -8,6 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -328,6 +330,104 @@ function OrderCard({ order, index }: OrderCardProps) {
   );
 }
 
+function CancelOrderByIdSection() {
+  const cancelOrder = useCancelOrder();
+  const [showDialog, setShowDialog] = useState(false);
+  const [orderIdInput, setOrderIdInput] = useState("");
+
+  const handleCancel = async () => {
+    const trimmed = orderIdInput.trim();
+    if (!trimmed || Number.isNaN(Number(trimmed))) {
+      toast.error("Please enter a valid Order ID.");
+      return;
+    }
+    try {
+      await cancelOrder.mutateAsync(BigInt(trimmed));
+      toast.success(`Order #${trimmed} cancelled successfully.`);
+      setShowDialog(false);
+      setOrderIdInput("");
+    } catch {
+      toast.error(
+        "Failed to cancel order. Make sure the Order ID is correct and the order is still in 'Placed' status.",
+      );
+    }
+  };
+
+  return (
+    <>
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <h3 className="font-semibold text-red-700 flex items-center gap-2 mb-1 text-sm">
+          <XCircle className="h-4 w-4" /> Cancel Order
+        </h3>
+        <p className="text-xs text-red-600/80 mb-3">
+          Cancel is only possible while order is in 'Placed' status.
+        </p>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="w-full gap-2"
+          onClick={() => setShowDialog(true)}
+          data-ocid="tracking.delete_button"
+        >
+          <XCircle className="h-4 w-4" /> Cancel My Order
+        </Button>
+      </div>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent data-ocid="tracking.dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              Cancel Order
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Enter your Order ID to cancel. Only orders in{" "}
+              <strong>'Placed'</strong> status can be cancelled.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="cancel-order-id">Order ID</Label>
+              <Input
+                id="cancel-order-id"
+                type="number"
+                placeholder="e.g. 12"
+                value={orderIdInput}
+                onChange={(e) => setOrderIdInput(e.target.value)}
+                data-ocid="tracking.input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDialog(false);
+                setOrderIdInput("");
+              }}
+              data-ocid="tracking.cancel_button"
+            >
+              Go Back
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={cancelOrder.isPending || !orderIdInput.trim()}
+              data-ocid="tracking.confirm_button"
+            >
+              {cancelOrder.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Cancel Order"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function TrackingPage() {
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
@@ -419,8 +519,12 @@ export default function TrackingPage() {
             ))}
           </div>
 
-          {/* Emergency Section */}
-          <div className="lg:col-span-1">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-4">
+            {/* Cancel Order Section */}
+            <CancelOrderByIdSection />
+
+            {/* Emergency Contact */}
             <div
               className="bg-card rounded-2xl shadow-card p-6 sticky top-20"
               data-ocid="tracking.card"

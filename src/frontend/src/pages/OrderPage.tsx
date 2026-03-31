@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCart } from "@/contexts/CartContext";
 import { generateTimeSlots } from "@/data/menuItems";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
@@ -15,7 +16,9 @@ import { usePlaceOrder } from "@/hooks/useQueries";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Banknote,
+  Check,
   Clock,
+  Copy,
   Loader2,
   Minus,
   Plus,
@@ -29,6 +32,36 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const TIME_SLOTS = generateTimeSlots();
+
+function CopyableField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="flex items-center justify-between gap-2 bg-muted rounded-lg px-3 py-2">
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-semibold text-foreground text-sm">{value}</p>
+      </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-1.5 rounded-md hover:bg-background transition-colors text-muted-foreground hover:text-foreground"
+        title="Copy"
+      >
+        {copied ? (
+          <Check className="h-4 w-4 text-green-500" />
+        ) : (
+          <Copy className="h-4 w-4" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 export default function OrderPage() {
   const navigate = useNavigate();
@@ -233,7 +266,7 @@ export default function OrderPage() {
                     UPI Payment
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Scan QR to pay
+                    Scan QR or pay by number
                   </p>
                 </button>
                 <button
@@ -260,18 +293,56 @@ export default function OrderPage() {
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
-                  className="mt-3 flex flex-col items-center gap-3"
+                  className="mt-1"
                   data-ocid="order.section"
                 >
-                  <div className="w-36 h-36 bg-muted rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2">
-                    <QrCode className="h-12 w-12 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground text-center">
-                      Scan QR to Pay
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    UPI ID: campusbite@upi
-                  </p>
+                  <Tabs defaultValue="qr" className="w-full">
+                    <TabsList className="w-full mb-3">
+                      <TabsTrigger
+                        value="qr"
+                        className="flex-1 gap-1.5"
+                        data-ocid="order.tab"
+                      >
+                        <QrCode className="h-3.5 w-3.5" /> Scan QR
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="number"
+                        className="flex-1 gap-1.5"
+                        data-ocid="order.tab"
+                      >
+                        <span className="text-base leading-none">📱</span> Pay
+                        by Number
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="qr" className="mt-0">
+                      <div className="flex flex-col items-center gap-3 py-2">
+                        <div className="w-36 h-36 bg-muted rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2">
+                          <QrCode className="h-12 w-12 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground text-center">
+                            Scan QR to Pay
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center">
+                          Open any UPI app and scan this QR code
+                        </p>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="number" className="mt-0">
+                      <div className="space-y-2 py-2">
+                        <CopyableField
+                          label="UPI Phone Number"
+                          value="9876543210"
+                        />
+                        <CopyableField label="UPI ID" value="campusbite@upi" />
+                        <p className="text-xs text-muted-foreground text-center pt-1">
+                          Open any UPI app (GPay, PhonePe, Paytm), enter this
+                          number or UPI ID, and complete payment.
+                        </p>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </motion.div>
               )}
 
