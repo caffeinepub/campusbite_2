@@ -59,7 +59,7 @@ export default function HomePage() {
         data-ocid="home.section"
       >
         <img
-          src="/assets/generated/canteen-banner.dim_1200x500.jpg"
+          src="/assets/whatsapp_image_2026-03-31_at_1.29.25_pm-019d42e7-f9cc-7101-bfc5-eada623f92b2.jpeg"
           alt="Saraswati College Canteen"
           className="absolute inset-0 w-full h-full object-cover"
         />

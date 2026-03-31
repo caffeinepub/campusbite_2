@@ -33,7 +33,7 @@ import {
   Loader2,
   Package,
   Phone,
-  X,
+  XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -85,7 +85,7 @@ function OrderCard({ order, index }: OrderCardProps) {
   const handleCancel = async () => {
     try {
       await cancelOrder.mutateAsync(order.id);
-      toast.success("Order cancelled.");
+      toast.success("Order cancelled successfully.");
       setShowCancelConfirm(false);
     } catch {
       toast.error("Failed to cancel order.");
@@ -178,7 +178,9 @@ function OrderCard({ order, index }: OrderCardProps) {
           <span className="text-muted-foreground">Items</span>
           <span className="font-medium text-right">
             {order.items
-              .map((oi) => `${getItemName(oi.menuItemId)} ×${oi.quantity}`)
+              .map(
+                (oi) => `${getItemName(oi.menuItemId)} ×${Number(oi.quantity)}`,
+              )
               .join(", ")}
           </span>
         </div>
@@ -217,17 +219,29 @@ function OrderCard({ order, index }: OrderCardProps) {
             </Button>
             {canCancel && (
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
-                className="gap-1.5 border-destructive text-destructive hover:bg-destructive/5"
+                className="gap-1.5"
                 onClick={() => setShowCancelConfirm(true)}
                 data-ocid={`tracking.delete_button.${index + 1}`}
               >
-                <X className="h-3.5 w-3.5" /> Cancel Order
+                <XCircle className="h-3.5 w-3.5" /> Cancel Order
               </Button>
             )}
           </div>
+          {canCancel && (
+            <p className="text-xs text-muted-foreground mt-2">
+              * Cancel is only available while order status is "Placed".
+            </p>
+          )}
         </>
+      )}
+
+      {order.status === "Cancelled" && (
+        <div className="mt-2 flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
+          <XCircle className="h-4 w-4 shrink-0" />
+          <span>This order has been cancelled.</span>
+        </div>
       )}
 
       {/* Change Time Dialog */}
@@ -284,8 +298,8 @@ function OrderCard({ order, index }: OrderCardProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            Are you sure you want to cancel this order? This action cannot be
-            undone.
+            Are you sure you want to cancel order #{order.id.toString()}? This
+            action cannot be undone.
           </p>
           <DialogFooter>
             <Button
@@ -304,7 +318,7 @@ function OrderCard({ order, index }: OrderCardProps) {
               {cancelOrder.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Yes, Cancel"
+                "Yes, Cancel Order"
               )}
             </Button>
           </DialogFooter>
