@@ -1,34 +1,30 @@
-# CampusBite
+# CampusBite Vendor Panel
 
 ## Current State
-Scaffolded project with empty Motoko backend and default React frontend. No existing application logic.
+This is a new vendor dashboard application for CampusBite canteen staff, separate from the student-facing app.
 
 ## Requested Changes (Diff)
 
 ### Add
-- User authentication: signup (name, email, phone, role: Student/Faculty, college ID, password) and login (email + password)
-- Menu page: food items with images, prices, quantity selector (+/-), Add to Cart button
-- Cart system: stores selected items with quantities
-- Order page: review cart items, choose pickup time, estimated prep time (15-20 min), payment (UPI QR code or Cash on Pickup)
-- Order tracking page: status steps (Order Placed → Preparing → Ready for Pickup)
-- Emergency section: Change Pickup Time button, Cancel Order button, contact with WhatsApp link
-- Notification banner: "Your order is ready!" message
-- Home page with hero banner (college canteen image), CampusBite logo, tagline, Order Now CTA
-- Footer with social links
-- Mobile-friendly responsive design
-- Bright orange/yellow/white color scheme
+- Vendor Login page (email + password)
+- Dashboard Home with summary stats: Total Orders Today, Pending Orders, Completed Orders
+- Orders Management: list of incoming orders (student name, food items, quantity, pickup time) with Accept / Mark as Preparing / Mark as Ready buttons
+- Time Management: default prep time 15-20 min, option to update delay time
+- Notifications: "Notify Student – Order Ready" button per order
+- Menu Management: add/edit/delete food items, upload food images, set price
+- Emergency Handling: view student requests (time change / cancel), accept or reject
+- Reports Section: daily sales summary, total orders chart
+- CampusBite logo at top of sidebar/navbar
+- White + orange theme, clean dashboard style
 
 ### Modify
-- Replace default frontend with full multi-page app
-- Backend to handle users, menu items, and orders
+- N/A (new project)
 
 ### Remove
-- Default scaffolded frontend content
+- N/A
 
 ## Implementation Plan
-1. Backend: User registration/login, menu items CRUD, order management (place, track, update, cancel)
-2. Frontend pages: Login/Signup, Home, Menu, Order, Order Tracking
-3. Frontend components: Navbar with logo, Cart sidebar, Notification toast, Footer
-4. Food item images generated via AI image generation
-5. College canteen hero banner image
-6. CampusBite logo integrated from uploaded asset
+1. Backend: vendor auth, order management (CRUD + status updates), menu management (CRUD), time management, emergency requests, daily reports
+2. Frontend: Login page → authenticated dashboard shell with sidebar nav → 6 dashboard sections (Home, Orders, Time, Notifications, Menu, Emergency, Reports)
+3. Use orange (#F97316) + white color scheme throughout
+4. Mock/seed data for demo orders and menu items

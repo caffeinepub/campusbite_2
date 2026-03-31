@@ -1,4 +1,3 @@
-import type { OrderRecord } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,14 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/AuthContext";
 import { generateTimeSlots } from "@/data/menuItems";
-import { MENU_ITEMS } from "@/data/menuItems";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
-  useCancelOrder,
-  useGetMyOrders,
-  useUpdatePickupTime,
-} from "@/hooks/useQueries";
+  type LocalOrder,
+  cancelOrder as cancelOrderUtil,
+  getOrders,
+  updatePickupTime as updatePickupTimeUtil,
+} from "@/utils/orderStorage";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -38,7 +37,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SiWhatsapp } from "react-icons/si";
 import { toast } from "sonner";
 
@@ -64,33 +63,34 @@ function getStatusBadgeClass(status: string) {
   return "bg-primary/10 text-primary border-primary/20";
 }
 
-function getItemName(menuItemId: bigint): string {
-  const found = MENU_ITEMS.find((m) => m.id === menuItemId);
-  return found?.name ?? `Item #${menuItemId.toString()}`;
-}
-
 interface OrderCardProps {
-  order: OrderRecord;
+  order: LocalOrder;
   index: number;
+  onUpdate: () => void;
+  email: string;
 }
 
-function OrderCard({ order, index }: OrderCardProps) {
-  const cancelOrder = useCancelOrder();
-  const updatePickupTime = useUpdatePickupTime();
+function OrderCard({ order, index, onUpdate, email }: OrderCardProps) {
   const [showTimeDialog, setShowTimeDialog] = useState(false);
   const [newTime, setNewTime] = useState("");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isUpdatingTime, setIsUpdatingTime] = useState(false);
 
   const statusIdx = getStatusIndex(order.status);
   const canCancel = order.status === "Placed";
 
   const handleCancel = async () => {
+    setIsCancelling(true);
     try {
-      await cancelOrder.mutateAsync(order.id);
+      cancelOrderUtil(email, order.id);
       toast.success("Order cancelled successfully.");
       setShowCancelConfirm(false);
+      onUpdate();
     } catch {
       toast.error("Failed to cancel order.");
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -99,15 +99,16 @@ function OrderCard({ order, index }: OrderCardProps) {
       toast.error("Please select a new pickup time.");
       return;
     }
+    setIsUpdatingTime(true);
     try {
-      await updatePickupTime.mutateAsync({
-        orderId: order.id,
-        newPickupTime: newTime,
-      });
+      updatePickupTimeUtil(email, order.id, newTime);
       toast.success("Pickup time updated!");
       setShowTimeDialog(false);
+      onUpdate();
     } catch {
       toast.error("Failed to update pickup time.");
+    } finally {
+      setIsUpdatingTime(false);
     }
   };
 
@@ -123,7 +124,7 @@ function OrderCard({ order, index }: OrderCardProps) {
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <p className="text-xs text-muted-foreground font-medium">Order ID</p>
-          <p className="font-bold text-foreground">#{order.id.toString()}</p>
+          <p className="font-bold text-foreground">#{order.id}</p>
         </div>
         <Badge className={`text-xs ${getStatusBadgeClass(order.status)}`}>
           {order.status === "ReadyForPickup"
@@ -136,7 +137,6 @@ function OrderCard({ order, index }: OrderCardProps) {
       {order.status !== "Cancelled" && (
         <div className="mb-5">
           <div className="flex items-center justify-between relative">
-            {/* Track line */}
             <div className="absolute left-0 right-0 top-4 h-0.5 bg-border z-0" />
             <div
               className="absolute left-0 top-4 h-0.5 bg-primary z-0 transition-all duration-700"
@@ -179,17 +179,13 @@ function OrderCard({ order, index }: OrderCardProps) {
         <div className="flex justify-between">
           <span className="text-muted-foreground">Items</span>
           <span className="font-medium text-right">
-            {order.items
-              .map(
-                (oi) => `${getItemName(oi.menuItemId)} ×${Number(oi.quantity)}`,
-              )
-              .join(", ")}
+            {order.items.map((oi) => `${oi.name} ×${oi.quantity}`).join(", ")}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Total</span>
           <span className="font-bold text-foreground">
-            ₹{Number(order.totalAmount)}
+            ₹{order.totalAmount}
           </span>
         </div>
         <div className="flex justify-between">
@@ -277,10 +273,10 @@ function OrderCard({ order, index }: OrderCardProps) {
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleUpdateTime}
-              disabled={updatePickupTime.isPending}
+              disabled={isUpdatingTime}
               data-ocid="tracking.confirm_button"
             >
-              {updatePickupTime.isPending ? (
+              {isUpdatingTime ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Update Time"
@@ -300,8 +296,8 @@ function OrderCard({ order, index }: OrderCardProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            Are you sure you want to cancel order #{order.id.toString()}? This
-            action cannot be undone.
+            Are you sure you want to cancel order #{order.id}? This action
+            cannot be undone.
           </p>
           <DialogFooter>
             <Button
@@ -314,10 +310,10 @@ function OrderCard({ order, index }: OrderCardProps) {
             <Button
               variant="destructive"
               onClick={handleCancel}
-              disabled={cancelOrder.isPending}
+              disabled={isCancelling}
               data-ocid="tracking.confirm_button"
             >
-              {cancelOrder.isPending ? (
+              {isCancelling ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Yes, Cancel Order"
@@ -330,26 +326,53 @@ function OrderCard({ order, index }: OrderCardProps) {
   );
 }
 
-function CancelOrderByIdSection() {
-  const cancelOrder = useCancelOrder();
+interface CancelByIdProps {
+  email: string;
+  collegeId: string;
+  onUpdate: () => void;
+}
+
+function CancelOrderByIdSection({
+  email,
+  collegeId,
+  onUpdate,
+}: CancelByIdProps) {
   const [showDialog, setShowDialog] = useState(false);
-  const [orderIdInput, setOrderIdInput] = useState("");
+  const [collegeIdInput, setCollegeIdInput] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const handleCancel = async () => {
-    const trimmed = orderIdInput.trim();
-    if (!trimmed || Number.isNaN(Number(trimmed))) {
-      toast.error("Please enter a valid Order ID.");
+    if (!collegeIdInput.trim()) {
+      toast.error("Please enter your College ID.");
       return;
     }
-    try {
-      await cancelOrder.mutateAsync(BigInt(trimmed));
-      toast.success(`Order #${trimmed} cancelled successfully.`);
-      setShowDialog(false);
-      setOrderIdInput("");
-    } catch {
+    if (collegeIdInput.trim().toLowerCase() !== collegeId.toLowerCase()) {
       toast.error(
-        "Failed to cancel order. Make sure the Order ID is correct and the order is still in 'Placed' status.",
+        "Incorrect College ID. Please enter the one you registered with.",
       );
+      return;
+    }
+
+    const orders = getOrders(email);
+    const placedOrders = orders.filter((o) => o.status === "Placed");
+    if (placedOrders.length === 0) {
+      toast.error("No active orders in 'Placed' status to cancel.");
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      for (const order of placedOrders) {
+        cancelOrderUtil(email, order.id);
+      }
+      toast.success("Your order(s) have been cancelled.");
+      setShowDialog(false);
+      setCollegeIdInput("");
+      onUpdate();
+    } catch {
+      toast.error("Failed to cancel order(s). Please try again.");
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -373,27 +396,34 @@ function CancelOrderByIdSection() {
         </Button>
       </div>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog
+        open={showDialog}
+        onOpenChange={(open) => {
+          setShowDialog(open);
+          if (!open) setCollegeIdInput("");
+        }}
+      >
         <DialogContent data-ocid="tracking.dialog">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-destructive" />
-              Cancel Order
+              Verify &amp; Cancel Order
             </DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Enter your Order ID to cancel. Only orders in{" "}
-              <strong>'Placed'</strong> status can be cancelled.
+              Enter your College ID to confirm. All active orders in{" "}
+              <strong>'Placed'</strong> status will be cancelled.
             </p>
             <div className="space-y-1.5">
-              <Label htmlFor="cancel-order-id">Order ID</Label>
+              <Label htmlFor="cancel-college-id">College ID</Label>
               <Input
-                id="cancel-order-id"
-                type="number"
-                placeholder="e.g. 12"
-                value={orderIdInput}
-                onChange={(e) => setOrderIdInput(e.target.value)}
+                id="cancel-college-id"
+                type="text"
+                placeholder="e.g. SCOE2024001"
+                value={collegeIdInput}
+                onChange={(e) => setCollegeIdInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCancel()}
                 data-ocid="tracking.input"
               />
             </div>
@@ -403,7 +433,7 @@ function CancelOrderByIdSection() {
               variant="outline"
               onClick={() => {
                 setShowDialog(false);
-                setOrderIdInput("");
+                setCollegeIdInput("");
               }}
               data-ocid="tracking.cancel_button"
             >
@@ -412,10 +442,10 @@ function CancelOrderByIdSection() {
             <Button
               variant="destructive"
               onClick={handleCancel}
-              disabled={cancelOrder.isPending || !orderIdInput.trim()}
+              disabled={isCancelling || !collegeIdInput.trim()}
               data-ocid="tracking.confirm_button"
             >
-              {cancelOrder.isPending ? (
+              {isCancelling ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Cancel Order"
@@ -430,10 +460,29 @@ function CancelOrderByIdSection() {
 
 export default function TrackingPage() {
   const navigate = useNavigate();
-  const { identity } = useInternetIdentity();
-  const { data: orders, isLoading, error } = useGetMyOrders();
+  const { currentUser } = useAuth();
+  const [orders, setOrders] = useState<LocalOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!identity) {
+  const loadOrders = useCallback(() => {
+    if (currentUser) {
+      setOrders(getOrders(currentUser.email));
+    }
+    setIsLoading(false);
+  }, [currentUser]);
+
+  useEffect(() => {
+    loadOrders();
+    const interval = setInterval(loadOrders, 30000);
+    const handleFocus = () => loadOrders();
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [loadOrders]);
+
+  if (!currentUser) {
     return (
       <main className="min-h-screen bg-muted flex items-center justify-center px-4">
         <div className="text-center" data-ocid="tracking.empty_state">
@@ -482,16 +531,7 @@ export default function TrackingPage() {
               </div>
             )}
 
-            {error && (
-              <div
-                className="bg-destructive/10 text-destructive rounded-xl p-4 text-sm"
-                data-ocid="tracking.error_state"
-              >
-                Failed to load orders. Please try again.
-              </div>
-            )}
-
-            {!isLoading && !error && (!orders || orders.length === 0) && (
+            {!isLoading && orders.length === 0 && (
               <div
                 className="text-center py-20 bg-card rounded-2xl shadow-xs"
                 data-ocid="tracking.empty_state"
@@ -514,15 +554,25 @@ export default function TrackingPage() {
               </div>
             )}
 
-            {orders?.map((order, i) => (
-              <OrderCard key={order.id.toString()} order={order} index={i} />
+            {orders.map((order, i) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                index={i}
+                email={currentUser.email}
+                onUpdate={loadOrders}
+              />
             ))}
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-4">
             {/* Cancel Order Section */}
-            <CancelOrderByIdSection />
+            <CancelOrderByIdSection
+              email={currentUser.email}
+              collegeId={currentUser.collegeId}
+              onUpdate={loadOrders}
+            />
 
             {/* Emergency Contact */}
             <div

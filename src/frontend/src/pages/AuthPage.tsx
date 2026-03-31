@@ -9,191 +9,50 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetUserProfile, useSaveUserProfile } from "@/hooks/useQueries";
+import type { CampusUser } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, Hash, Loader2, LogIn, Phone, User } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 
-export default function AuthPage() {
+interface AuthPageProps {
+  onAuthSuccess?: () => void;
+  login?: (
+    email: string,
+    password: string,
+  ) => { success: boolean; error?: string };
+  signup?: (userData: Omit<CampusUser, "id">) => {
+    success: boolean;
+    error?: string;
+  };
+}
+
+export default function AuthPage({
+  onAuthSuccess,
+  login: loginProp,
+  signup: signupProp,
+}: AuthPageProps = {}) {
+  const auth = useAuth();
   const navigate = useNavigate();
-  const { identity, login, isLoggingIn, isInitializing } =
-    useInternetIdentity();
-  const { data: profile, isLoading: profileLoading } = useGetUserProfile();
-  const saveProfile = useSaveUserProfile();
 
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    role: "Student",
-    collegeId: "",
-  });
+  const loginFn = loginProp ?? auth.login;
+  const signupFn = signupProp ?? auth.signup;
 
-  // Redirect when already logged in with profile
-  useEffect(() => {
-    if (identity && profile && !profileLoading) {
+  const handleSuccess = () => {
+    if (onAuthSuccess) {
+      onAuthSuccess();
+    } else {
       navigate({ to: "/" });
-    }
-  }, [identity, profile, profileLoading, navigate]);
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.phone.trim() || !form.collegeId.trim()) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-    try {
-      await saveProfile.mutateAsync({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        role: form.role,
-        collegeId: form.collegeId.trim(),
-      });
-      toast.success("Profile saved! Welcome to CampusBite 🎉");
-      navigate({ to: "/" });
-    } catch {
-      toast.error("Failed to save profile. Please try again.");
     }
   };
 
-  const showProfileForm = !!identity && !profileLoading && profile === null;
-  const showLoading = isInitializing || (!!identity && profileLoading);
-
-  if (showLoading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-muted">
-        <div
-          className="flex flex-col items-center gap-3"
-          data-ocid="auth.loading_state"
-        >
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm">Loading your profile…</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (showProfileForm) {
-    return (
-      <main className="min-h-screen bg-muted flex items-center justify-center px-4 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-2xl shadow-card p-8 w-full max-w-md"
-          data-ocid="profile.modal"
-        >
-          <div className="text-center mb-6">
-            <img
-              src="/assets/campusbite-logo.png"
-              alt="CampusBite"
-              className="h-14 w-auto mx-auto mb-3"
-            />
-            <h1 className="font-display text-2xl font-bold text-foreground">
-              Complete Your Profile
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Just a few details to get you started!
-            </p>
-          </div>
-
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="name" className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" /> Full Name
-              </Label>
-              <Input
-                id="name"
-                placeholder="e.g. Priya Sharma"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                required
-                data-ocid="profile.input"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="phone" className="flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" /> Phone Number
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="e.g. 9876543210"
-                value={form.phone}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, phone: e.target.value }))
-                }
-                required
-                data-ocid="profile.input"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="role" className="flex items-center gap-1.5">
-                <BookOpen className="h-3.5 w-3.5" /> Role
-              </Label>
-              <Select
-                value={form.role}
-                onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}
-              >
-                <SelectTrigger data-ocid="profile.select">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Student">Student</SelectItem>
-                  <SelectItem value="Faculty">Faculty</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="collegeId" className="flex items-center gap-1.5">
-                <Hash className="h-3.5 w-3.5" /> College ID
-              </Label>
-              <Input
-                id="collegeId"
-                placeholder="e.g. SCOE2024001"
-                value={form.collegeId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, collegeId: e.target.value }))
-                }
-                required
-                data-ocid="profile.input"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={saveProfile.isPending}
-              data-ocid="profile.submit_button"
-            >
-              {saveProfile.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                "Save & Continue"
-              )}
-            </Button>
-          </form>
-        </motion.div>
-      </main>
-    );
-  }
-
-  // Default: Login/Signup UI
   return (
     <main className="min-h-screen bg-muted flex items-center justify-center px-4 py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card rounded-2xl shadow-card p-8 w-full max-w-md"
+        className="bg-card rounded-2xl shadow-lg p-8 w-full max-w-md"
         data-ocid="auth.modal"
       >
         <div className="text-center mb-6">
@@ -201,8 +60,11 @@ export default function AuthPage() {
             src="/assets/campusbite-logo.png"
             alt="CampusBite"
             className="h-14 w-auto mx-auto mb-3"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
-          <h1 className="font-display text-2xl font-bold text-foreground">
+          <h1 className="font-bold text-2xl text-foreground">
             Welcome to CampusBite
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -210,75 +72,309 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="login" data-ocid="auth.tab">
+        <Tabs defaultValue="signup" data-ocid="auth.tab">
           <TabsList className="grid grid-cols-2 w-full mb-6">
-            <TabsTrigger value="login" data-ocid="auth.tab">
-              Login
-            </TabsTrigger>
             <TabsTrigger value="signup" data-ocid="auth.tab">
               Sign Up
             </TabsTrigger>
+            <TabsTrigger value="login" data-ocid="auth.tab">
+              Login
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login" className="space-y-4">
-            <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
-              <p>
-                CampusBite uses <strong>Internet Identity</strong> — a secure,
-                password-free login system. No password to remember!
-              </p>
-            </div>
-            <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11"
-              onClick={login}
-              disabled={isLoggingIn}
-              data-ocid="auth.primary_button"
-            >
-              {isLoggingIn ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting…
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Login with Internet Identity
-                </>
-              )}
-            </Button>
+          <TabsContent value="signup">
+            <SignupForm onSuccess={handleSuccess} signup={signupFn} />
           </TabsContent>
 
-          <TabsContent value="signup" className="space-y-4">
-            <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
-              <p>
-                New to CampusBite? Click below to create your secure account.
-                After signing in, you&apos;ll complete a short profile form.
-              </p>
-            </div>
-            <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11"
-              onClick={login}
-              disabled={isLoggingIn}
-              data-ocid="auth.primary_button"
-            >
-              {isLoggingIn ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account…
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Create Account
-                </>
-              )}
-            </Button>
+          <TabsContent value="login">
+            <LoginForm onSuccess={handleSuccess} login={loginFn} />
           </TabsContent>
         </Tabs>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing, you agree to our canteen terms and policies.
+          Saraswati College of Engineering, Kharghar, Navi Mumbai
         </p>
       </motion.div>
     </main>
+  );
+}
+
+function LoginForm({
+  onSuccess,
+  login,
+}: {
+  onSuccess: () => void;
+  login: (
+    email: string,
+    password: string,
+  ) => { success: boolean; error?: string };
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const result = login(email, password);
+    if (result.success) {
+      onSuccess();
+    } else {
+      setError(result.error ?? "Login failed.");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="login-email">Email</Label>
+        <Input
+          id="login-email"
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          data-ocid="auth.input"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="login-password">Password</Label>
+        <div className="relative">
+          <Input
+            id="login-password"
+            type={showPass ? "text" : "password"}
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="pr-10"
+            data-ocid="auth.input"
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowPass(!showPass)}
+          >
+            {showPass ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-destructive" data-ocid="auth.error_state">
+          {error}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11"
+        data-ocid="auth.primary_button"
+      >
+        Login
+      </Button>
+    </form>
+  );
+}
+
+function SignupForm({
+  onSuccess,
+  signup,
+}: {
+  onSuccess: () => void;
+  signup: (userData: Omit<CampusUser, "id">) => {
+    success: boolean;
+    error?: string;
+  };
+}) {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "Student" as "Student" | "Faculty",
+    collegeId: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (form.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    const result = signup({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      role: form.role,
+      collegeId: form.collegeId.trim(),
+      password: form.password,
+    });
+    if (result.success) {
+      onSuccess();
+    } else {
+      setError(result.error ?? "Signup failed.");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="signup-name">Full Name</Label>
+        <Input
+          id="signup-name"
+          placeholder="e.g. Priya Sharma"
+          value={form.name}
+          onChange={set("name")}
+          required
+          data-ocid="auth.input"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="signup-email">Email</Label>
+        <Input
+          id="signup-email"
+          type="email"
+          placeholder="your@email.com"
+          value={form.email}
+          onChange={set("email")}
+          required
+          data-ocid="auth.input"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="signup-phone">Phone Number</Label>
+        <Input
+          id="signup-phone"
+          type="tel"
+          placeholder="e.g. 9876543210"
+          value={form.phone}
+          onChange={set("phone")}
+          required
+          data-ocid="auth.input"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="signup-role">Role</Label>
+          <Select
+            value={form.role}
+            onValueChange={(v) =>
+              setForm((f) => ({ ...f, role: v as "Student" | "Faculty" }))
+            }
+          >
+            <SelectTrigger data-ocid="auth.select">
+              <SelectValue placeholder="Select role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Student">Student</SelectItem>
+              <SelectItem value="Faculty">Faculty</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="signup-college-id">College ID</Label>
+          <Input
+            id="signup-college-id"
+            placeholder="e.g. SCOE2024001"
+            value={form.collegeId}
+            onChange={set("collegeId")}
+            required
+            data-ocid="auth.input"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="signup-password">Password</Label>
+        <div className="relative">
+          <Input
+            id="signup-password"
+            type={showPass ? "text" : "password"}
+            placeholder="Min. 6 characters"
+            value={form.password}
+            onChange={set("password")}
+            required
+            className="pr-10"
+            data-ocid="auth.input"
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowPass(!showPass)}
+          >
+            {showPass ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+        <div className="relative">
+          <Input
+            id="signup-confirm-password"
+            type={showConfirmPass ? "text" : "password"}
+            placeholder="Re-enter password"
+            value={form.confirmPassword}
+            onChange={set("confirmPassword")}
+            required
+            className="pr-10"
+            data-ocid="auth.input"
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowConfirmPass(!showConfirmPass)}
+          >
+            {showConfirmPass ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-destructive" data-ocid="auth.error_state">
+          {error}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11"
+        data-ocid="auth.primary_button"
+      >
+        Create Account
+      </Button>
+    </form>
   );
 }

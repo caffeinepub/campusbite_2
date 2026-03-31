@@ -1,8 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetUserProfile } from "@/hooks/useQueries";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, ShoppingCart, UtensilsCrossed, X } from "lucide-react";
 import { useState } from "react";
@@ -10,17 +9,8 @@ import { useState } from "react";
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { totalCount } = useCart();
-  const { identity, clear, isLoggingIn } = useInternetIdentity();
-  const { data: profile } = useGetUserProfile();
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
-
-  const handleLogin = () => {
-    if (identity) {
-      clear();
-    } else {
-      navigate({ to: "/auth" });
-    }
-  };
 
   const navLinks = [
     { label: "Menu", to: "/menu" },
@@ -91,15 +81,15 @@ export default function Navbar() {
             </Link>
 
             {/* Auth */}
-            {identity ? (
+            {currentUser ? (
               <div className="hidden md:flex items-center gap-2">
                 <span className="text-sm font-medium text-foreground truncate max-w-[120px]">
-                  {profile?.name ?? "Student"}
+                  {currentUser.name}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={clear}
+                  onClick={logout}
                   data-ocid="auth.secondary_button"
                 >
                   Logout
@@ -109,11 +99,10 @@ export default function Navbar() {
               <Button
                 size="sm"
                 className="hidden md:flex bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={handleLogin}
-                disabled={isLoggingIn}
+                onClick={() => navigate({ to: "/auth" })}
                 data-ocid="auth.primary_button"
               >
-                Login
+                Login / Sign Up
               </Button>
             )}
 
@@ -148,16 +137,16 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {identity ? (
+            {currentUser ? (
               <>
                 <span className="text-sm font-medium px-2 text-muted-foreground">
-                  {profile?.name ?? "Student"}
+                  {currentUser.name}
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    clear();
+                    logout();
                     setMobileOpen(false);
                   }}
                   data-ocid="auth.secondary_button"
@@ -170,10 +159,9 @@ export default function Navbar() {
                 size="sm"
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
-                  handleLogin();
+                  navigate({ to: "/auth" });
                   setMobileOpen(false);
                 }}
-                disabled={isLoggingIn}
                 data-ocid="auth.primary_button"
               >
                 Login / Sign Up

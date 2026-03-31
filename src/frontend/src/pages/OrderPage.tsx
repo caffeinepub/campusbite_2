@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { generateTimeSlots } from "@/data/menuItems";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { usePlaceOrder } from "@/hooks/useQueries";
+import { saveOrder } from "@/utils/orderStorage";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Banknote,
@@ -65,16 +65,16 @@ function CopyableField({ label, value }: { label: string; value: string }) {
 
 export default function OrderPage() {
   const navigate = useNavigate();
-  const { identity } = useInternetIdentity();
+  const { currentUser } = useAuth();
   const { items, updateQuantity, removeItem, clearCart, totalAmount } =
     useCart();
-  const placeOrder = usePlaceOrder();
 
   const [pickupTime, setPickupTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "cash">("cash");
+  const [isPlacing, setIsPlacing] = useState(false);
 
   const handlePlaceOrder = async () => {
-    if (!identity) {
+    if (!currentUser) {
       toast.error("Please login to place an order.");
       navigate({ to: "/auth" });
       return;
@@ -88,14 +88,17 @@ export default function OrderPage() {
       return;
     }
 
+    setIsPlacing(true);
     try {
-      await placeOrder.mutateAsync({
+      saveOrder(currentUser.email, {
         paymentMethod: paymentMethod === "upi" ? "UPI" : "Cash on Pickup",
         pickupTime,
+        totalAmount,
         items: items.map((item) => ({
-          menuItemId: item.menuItemId,
-          itemPrice: item.price,
-          quantity: BigInt(item.quantity),
+          menuItemId: Number(item.menuItemId),
+          name: item.name,
+          quantity: item.quantity,
+          price: Number(item.price),
         })),
       });
       clearCart();
@@ -104,6 +107,8 @@ export default function OrderPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to place order.";
       toast.error(msg);
+    } finally {
+      setIsPlacing(false);
     }
   };
 
@@ -409,10 +414,10 @@ export default function OrderPage() {
               <Button
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 font-semibold"
                 onClick={handlePlaceOrder}
-                disabled={placeOrder.isPending}
+                disabled={isPlacing}
                 data-ocid="order.submit_button"
               >
-                {placeOrder.isPending ? (
+                {isPlacing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Placing Order…
@@ -421,11 +426,6 @@ export default function OrderPage() {
                   "Place Order"
                 )}
               </Button>
-              {!identity && (
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  You&apos;ll be asked to login before placing your order.
-                </p>
-              )}
             </div>
           </div>
         </div>
