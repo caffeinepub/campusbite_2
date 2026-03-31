@@ -1,5 +1,8 @@
 import { Button } from "@/components/ui/button";
 import type { Order, OrderStatus } from "@/data/mockVendorData";
+import { updateOrderStatusByIdAcrossUsers } from "@/utils/orderStorage";
+import { updateSharedOrderStatus } from "@/utils/sharedOrderStorage";
+import type { SharedOrderStatus } from "@/utils/sharedOrderStorage";
 import { useState } from "react";
 import { toast } from "sonner";
 import StatusPill from "./StatusPill";
@@ -30,6 +33,24 @@ const actionColor: Partial<Record<OrderStatus, string>> = {
   ready: "bg-green-500 hover:bg-green-600 text-white",
 };
 
+// Map vendor OrderStatus → SharedOrderStatus for syncing
+const vendorToShared: Record<OrderStatus, SharedOrderStatus> = {
+  pending: "pending",
+  accepted: "accepted",
+  preparing: "preparing",
+  ready: "ready",
+  completed: "completed",
+};
+
+// Map vendor status → student LocalOrder status for tracking page
+const vendorToStudentStatus: Partial<
+  Record<OrderStatus, "Placed" | "Preparing" | "ReadyForPickup" | "Cancelled">
+> = {
+  preparing: "Preparing",
+  ready: "ReadyForPickup",
+  completed: "ReadyForPickup",
+};
+
 const filterOptions: (OrderStatus | "all")[] = [
   "all",
   "pending",
@@ -54,6 +75,16 @@ export default function OrdersManagement({ orders, setOrders }: Props) {
         toast.success(
           `Order #${id} → ${next.charAt(0).toUpperCase() + next.slice(1)}`,
         );
+
+        // Sync to shared order storage
+        updateSharedOrderStatus(id, vendorToShared[next]);
+
+        // Sync back to student's personal order storage
+        const studentStatus = vendorToStudentStatus[next];
+        if (studentStatus) {
+          updateOrderStatusByIdAcrossUsers(id, studentStatus);
+        }
+
         return { ...o, status: next };
       }),
     );
@@ -94,7 +125,7 @@ export default function OrdersManagement({ orders, setOrders }: Props) {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">
-                  Order ID
+                  College ID
                 </th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">
                   Student
@@ -117,48 +148,54 @@ export default function OrdersManagement({ orders, setOrders }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((order, i) => (
-                <tr
-                  key={order.id}
-                  className="hover:bg-gray-50/50 transition-colors"
-                  data-ocid={`orders.item.${i + 1}`}
-                >
-                  <td className="px-4 py-3">
-                    <span className="font-bold text-orange-500 text-xs">
-                      #{order.id}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-800">
-                    {order.studentName}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 hidden md:table-cell max-w-[180px] truncate">
-                    {order.items}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700 font-medium">
-                    {order.qty}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
-                    {order.pickupTime}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusPill status={order.status} />
-                  </td>
-                  <td className="px-4 py-3">
-                    {nextStatus[order.status] ? (
-                      <button
-                        type="button"
-                        onClick={() => advanceStatus(order.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${actionColor[order.status]}`}
-                        data-ocid={`orders.action.button.${i + 1}`}
-                      >
-                        {actionLabel[order.status]}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">Done</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((order, i) => {
+                // studentName is stored as "Name (CollegeID)"
+                const match = order.studentName.match(/^(.+?)\s*\((.+?)\)$/);
+                const displayName = match ? match[1] : order.studentName;
+                const displayCollege = match ? match[2] : "—";
+                return (
+                  <tr
+                    key={order.id}
+                    className="hover:bg-gray-50/50 transition-colors"
+                    data-ocid={`orders.item.${i + 1}`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-bold text-orange-500 text-xs">
+                        {displayCollege}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      {displayName}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 hidden md:table-cell max-w-[180px] truncate">
+                      {order.items}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 font-medium">
+                      {order.qty}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                      {order.pickupTime}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill status={order.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {nextStatus[order.status] ? (
+                        <button
+                          type="button"
+                          onClick={() => advanceStatus(order.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${actionColor[order.status]}`}
+                          data-ocid={`orders.action.button.${i + 1}`}
+                        >
+                          {actionLabel[order.status]}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">Done</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr>
                   <td

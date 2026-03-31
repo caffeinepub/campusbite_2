@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import {
   initialEmergencyRequests,
   initialMenuItems,
-  initialOrders,
 } from "@/data/mockVendorData";
 import type { EmergencyRequest, MenuItem, Order } from "@/data/mockVendorData";
+import { getAllSharedOrders } from "@/utils/sharedOrderStorage";
 import {
   AlertTriangle,
   BarChart3,
@@ -22,7 +22,7 @@ import {
   UtensilsCrossed,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardHome from "./DashboardHome";
 import EmergencyHandling from "./EmergencyHandling";
 import MenuManagement from "./MenuManagement";
@@ -48,7 +48,7 @@ const navItems: {
     id: "orders",
     label: "Orders",
     icon: <ClipboardList size={18} />,
-    badge: 3,
+    badge: 0,
   },
   { id: "menu", label: "Menu Management", icon: <UtensilsCrossed size={18} /> },
   { id: "time", label: "Time Management", icon: <Clock size={18} /> },
@@ -58,17 +58,42 @@ const navItems: {
   { id: "settings", label: "Settings", icon: <Settings size={18} /> },
 ];
 
+function sharedToVendorOrder(
+  so: ReturnType<typeof getAllSharedOrders>[number],
+): Order {
+  return {
+    id: so.id,
+    studentName: `${so.studentName} (${so.collegeId || "N/A"})`,
+    items: so.items.map((i) => `${i.name} ×${i.qty}`).join(", "),
+    qty: so.items.reduce((sum, i) => sum + i.qty, 0),
+    pickupTime: so.pickupTime,
+    status: so.status === "cancelled" ? "completed" : so.status,
+  };
+}
+
 export default function DashboardShell({
   activeSection,
   onSectionChange,
   onLogout,
 }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [orders, setOrders] = useState<Order[]>(() =>
+    getAllSharedOrders().map(sharedToVendorOrder),
+  );
   const [menuItems, setMenuItems] = useState<MenuItem[]>(initialMenuItems);
   const [emergencyRequests, setEmergencyRequests] = useState<
     EmergencyRequest[]
   >(initialEmergencyRequests);
+
+  // Poll shared store every 5 seconds for new student orders
+  useEffect(() => {
+    const poll = () => {
+      const fresh = getAllSharedOrders().map(sharedToVendorOrder);
+      setOrders(fresh);
+    };
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const pendingCount = orders.filter((o) => o.status === "pending").length;
   const navWithBadge = navItems.map((n) =>

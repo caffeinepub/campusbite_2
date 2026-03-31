@@ -90,17 +90,21 @@ export default function OrderPage() {
 
     setIsPlacing(true);
     try {
-      saveOrder(currentUser.email, {
-        paymentMethod: paymentMethod === "upi" ? "UPI" : "Cash on Pickup",
-        pickupTime,
-        totalAmount,
-        items: items.map((item) => ({
-          menuItemId: Number(item.menuItemId),
-          name: item.name,
-          quantity: item.quantity,
-          price: Number(item.price),
-        })),
-      });
+      saveOrder(
+        currentUser.email,
+        {
+          paymentMethod: paymentMethod === "upi" ? "UPI" : "Cash on Pickup",
+          pickupTime,
+          totalAmount,
+          items: items.map((item) => ({
+            menuItemId: Number(item.menuItemId),
+            name: item.name,
+            quantity: item.quantity,
+            price: Number(item.price),
+          })),
+        },
+        { name: currentUser.name, collegeId: currentUser.collegeId },
+      );
       clearCart();
       toast.success("Order placed successfully! 🎉");
       navigate({ to: "/tracking" });
