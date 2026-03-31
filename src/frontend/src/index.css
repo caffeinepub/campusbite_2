@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Figtree";
+  src: url("/assets/fonts/Figtree.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    --background: 1 0 0;
+    --foreground: 0.165 0.012 264;
+    --card: 1 0 0;
+    --card-foreground: 0.165 0.012 264;
+    --popover: 1 0 0;
+    --popover-foreground: 0.165 0.012 264;
+    --primary: 0.724 0.166 54.7;
+    --primary-foreground: 1 0 0;
+    --secondary: 0.97 0.002 264;
+    --secondary-foreground: 0.165 0.012 264;
+    --muted: 0.97 0.002 264;
+    --muted-foreground: 0.542 0.012 262;
+    --accent: 0.782 0.155 74.8;
+    --accent-foreground: 0.165 0.012 264;
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 1 0 0;
+    --border: 0.924 0.003 264;
+    --input: 0.924 0.003 264;
+    --ring: 0.724 0.166 54.7;
+    --chart-1: 0.724 0.166 54.7;
+    --chart-2: 0.782 0.155 74.8;
+    --chart-3: 0.6 0.118 184.704;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 1 0 0;
+    --sidebar-foreground: 0.165 0.012 264;
+    --sidebar-primary: 0.724 0.166 54.7;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.97 0 0;
+    --sidebar-accent-foreground: 0.165 0.012 264;
+    --sidebar-border: 0.924 0.003 264;
+    --sidebar-ring: 0.724 0.166 54.7;
+    --campus-dark: 0.241 0.015 264;
+    --campus-orange: 0.724 0.166 54.7;
+    --campus-yellow: 0.782 0.155 74.8;
+  }
+
+  .dark {
+    --background: 0.145 0 0;
+    --foreground: 0.985 0 0;
+    --card: 0.205 0 0;
+    --card-foreground: 0.985 0 0;
+    --popover: 0.269 0 0;
+    --popover-foreground: 0.985 0 0;
+    --primary: 0.724 0.166 54.7;
+    --primary-foreground: 1 0 0;
+    --secondary: 0.269 0 0;
+    --secondary-foreground: 0.985 0 0;
+    --muted: 0.269 0 0;
+    --muted-foreground: 0.708 0 0;
+    --accent: 0.371 0 0;
+    --accent-foreground: 0.985 0 0;
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.205 0 0;
+    --border: 1 0 0 / 10%;
+    --input: 1 0 0 / 15%;
+    --ring: 0.724 0.166 54.7;
+    --chart-1: 0.724 0.166 54.7;
+    --chart-2: 0.782 0.155 74.8;
+    --chart-3: 0.6 0.118 184.704;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 0.205 0 0;
+    --sidebar-foreground: 0.985 0 0;
+    --sidebar-primary: 0.724 0.166 54.7;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.269 0 0;
+    --sidebar-accent-foreground: 0.985 0 0;
+    --sidebar-border: 1 0 0 / 10%;
+    --sidebar-ring: 0.724 0.166 54.7;
+    --campus-dark: 0.145 0 0;
+    --campus-orange: 0.724 0.166 54.7;
+    --campus-yellow: 0.782 0.155 74.8;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Figtree", system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: "Fraunces", Georgia, serif;
+  }
+}
